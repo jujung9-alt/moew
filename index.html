@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>파이썬 로직 그대로! 캔버스 RPG</title>
+    <title>파이썬 데이터 기반 2D 캔버스 RPG</title>
     <style>
         body {
             background-color: #1a1a1a;
@@ -12,283 +12,233 @@
         }
         canvas {
             border: 3px solid #555;
-            background-color: #222;
+            background-color: #000;
             margin-top: 10px;
         }
-        .btn-container {
-            margin-top: 15px;
+        .controls {
+            margin-top: 10px;
         }
         button {
-            padding: 10px 20px;
-            font-size: 16px;
-            margin: 5px;
+            padding: 8px 16px;
+            font-size: 14px;
             cursor: pointer;
             background-color: #444;
             color: #fff;
             border: 1px solid #777;
-            border-radius: 5px;
-        }
-        button:hover {
-            background-color: #666;
+            border-radius: 4px;
         }
     </style>
 </head>
 <body>
 
-    <h1>🗡️ 캔버스 RPG 게임</h1>
-    <canvas id="gameCanvas" width="600" height="300"></canvas>
+    <h1>🗡️ 2D 맵 탐험 RPG</h1>
+    <p><b>방향키(▲▼◀▶)</b>로 이동하세요! (마을/숲/길드/상점 표지판에 다가가세요)</p>
     
-    <div id="controls" class="btn-container"></div>
+    <canvas id="gameCanvas" width="512" height="512"></canvas>
+    <div id="ui" class="controls"></div>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        // ==========================================
-        // 1. 작성해주신 파이썬 변수 그대로 유지!
-        // ==========================================
-        let user_lv = 1;
-        let user_hp = 100;
-        let user_job = '시민';
-        let user_at = 0;
-        let money = 0;
-        let max_hp = 100;
-        let skill = '없음';
+        // 1. 파이썬 유저 데이터 유지
+        let user_hp = 100, max_hp = 100, user_at = 0, user_job = '시민', skill = '없음';
 
-        // 애니메이션용 캐릭터/몬스터 X 좌표 (움직임 효과)
-        let playerX = 100;
-        let monsterX = 450;
-        let playerMove = 0;
-        let monsterMove = 0;
+        // 2. 맵 설정 (타일 크기: 64x64, 8x8 맵)
+        const TILE_SIZE = 64;
+        const MAP_SIZE = 8;
+        
+        // 0: 풀밭, 1: 나무(벽), 2: 마을, 3: 숲, 4: 길드, 5: 상점
+        const tileMap = [
+            [1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 2, 0, 0, 0, 3, 3, 1],
+            [1, 0, 1, 1, 0, 1, 3, 1],
+            [1, 4, 1, 5, 0, 0, 0, 1],
+            [1, 0, 0, 0, 1, 1, 0, 1],
+            [1, 1, 1, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 1, 0, 0, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1]
+        ];
 
-        // 현재 전투 중인 몬스터 정보
+        // 플레이어 맵 위치 (타일 좌표)
+        let playerTileX = 1, playerTileY = 1;
+        let gameState = 'JOB_SELECT';
         let currentMonster = null;
-        let gameState = 'JOB_SELECT'; // 게임 상태
-        let logMessage = "직업을 선택해주세요!";
+        let logMsg = "직업을 선택해주세요!";
 
-        // ==========================================
-        // 2. 작성해주신 몬스터 데이터 그대로 유지!
-        // ==========================================
+        // 파이썬 몬스터 데이터 100% 동일
         const monsterData = {
             '슬라임': { at: 70, hp: 100, rewardAt: 30, rewardHp: 50, color: '#4CAF50' },
-            '오크': { at: 100, hp: 200, rewardAt: 70, rewardHp: 100, color: '#8BC34A' },
             '고블린': { at: 100, hp: 150, rewardAt: 50, rewardHp: 70, color: '#CDDC39' },
+            '오크': { at: 100, hp: 200, rewardAt: 70, rewardHp: 100, color: '#8BC34A' },
             '자이언트 스파이더': { at: 350, hp: 750, rewardAt: 200, rewardHp: 250, color: '#FF9800' },
             '그라운드 드래곤': { at: 800, hp: 1000, rewardAt: 500, rewardHp: 700, color: '#F44336' }
         };
 
-        // ==========================================
-        // 3. 캔버스 화면 그리기 + 움직임 애니메이션!
-        // ==========================================
+        // 3. 맵 & 그래픽 렌더링
         function draw() {
-            // 화면 싹 지우기 (clearRect)
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 바닥 선 그리기
-            ctx.strokeStyle = "#555";
-            ctx.beginPath();
-            ctx.moveTo(0, 220);
-            ctx.lineTo(600, 220);
-            ctx.stroke();
+            // 맵 그리기
+            for (let r = 0; r < MAP_SIZE; r++) {
+                for (let c = 0; c < MAP_SIZE; c++) {
+                    let tile = tileMap[r][c];
+                    let x = c * TILE_SIZE;
+                    let y = r * TILE_SIZE;
 
-            // --- 플레이어 그리기 (움직이는 효과 포함) ---
-            let renderPlayerX = playerX + playerMove;
-            ctx.fillStyle = "#2196F3"; // 파란색 유저
-            ctx.fillRect(renderPlayerX, 150, 40, 60);
-            
-            // 유저 정보 표시
-            ctx.fillStyle = "#FFF";
-            ctx.font = "14px sans-serif";
-            ctx.fillText(`[${user_job}]`, renderPlayerX - 5, 130);
-            ctx.fillText(`HP: ${user_hp}/${max_hp}`, renderPlayerX - 10, 145);
+                    if (tile === 0) ctx.fillStyle = "#3e8e41"; // 풀밭
+                    else if (tile === 1) ctx.fillStyle = "#1e4620"; // 나무
+                    else if (tile === 2) ctx.fillStyle = "#795548"; // 마을
+                    else if (tile === 3) ctx.fillStyle = "#2e7d32"; // 숲
+                    else if (tile === 4) ctx.fillStyle = "#3f51b5"; // 길드
+                    else if (tile === 5) ctx.fillStyle = "#ff9800"; // 상점
 
-            // --- 몬스터 그리기 (전투 상태일 때만) ---
-            if (currentMonster && currentMonster.hp > 0) {
-                let renderMonsterX = monsterX + monsterMove;
-                ctx.fillStyle = currentMonster.color;
-                ctx.fillRect(renderMonsterX, 130, 50, 80);
+                    ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                    ctx.strokeStyle = "#2b5e2d";
+                    ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
 
-                ctx.fillStyle = "#FFF";
-                ctx.fillText(`[${currentMonster.name}]`, renderMonsterX - 10, 105);
-                ctx.fillText(`HP: ${currentMonster.hp}`, renderMonsterX - 5, 120);
+                    // 건물/장소 라벨 표시
+                    ctx.fillStyle = "#fff";
+                    ctx.font = "12px sans-serif";
+                    if (tile === 2) ctx.fillText("🏠마을", x+12, y+36);
+                    if (tile === 3) ctx.fillText("🌲숲", x+18, y+36);
+                    if (tile === 4) ctx.fillText("⚔️길드", x+12, y+36);
+                    if (tile === 5) ctx.fillText("💰상점", x+12, y+36);
+                }
             }
 
-            // 상단 안내 메시지 출력
+            // 플레이어 그리기 (파란색 상자)
+            ctx.fillStyle = "#2196F3";
+            ctx.fillRect(playerTileX * TILE_SIZE + 16, playerTileY * TILE_SIZE + 16, 32, 32);
+
+            // 상단 메시지 및 상태 텍스트
             ctx.fillStyle = "#FFD700";
             ctx.font = "16px sans-serif";
-            ctx.fillText(logMessage, 20, 40);
-
-            // 플레이어 스탯 출력
-            ctx.fillStyle = "#AAA";
+            ctx.fillText(logMsg, 15, 25);
+            ctx.fillStyle = "#FFF";
             ctx.font = "13px sans-serif";
-            ctx.fillText(`공격력: ${user_at} | 스킬: ${skill}`, 20, 70);
+            ctx.fillText(`[${user_job}] HP: ${user_hp}/${max_hp} | 공격력: ${user_at} | 스킬: ${skill}`, 15, 45);
 
-            // 움직임 복원 (공격 후 제자리로 돌아오기)
-            if (playerMove > 0) playerMove -= 2;
-            if (monsterMove < 0) monsterMove += 2;
-
-            // 반복 애니메이션 실행!
             requestAnimationFrame(draw);
         }
 
-        // ==========================================
-        // 4. 작성해주신 직업 전직 로직 그대로 적용
-        // ==========================================
-        function selectJob(jobChoice) {
-            if (jobChoice === '검사') {
-                user_job = '검사';
-                skill = '검기';
-                max_hp += 100;
-                user_hp += 100;
-                user_at += 100;
-                logMessage = "검사로 전직하였습니다!";
-            } else if (jobChoice === '마법사') {
-                user_job = '마법사';
-                user_hp += 50;
-                max_hp += 50;
-                // 작성해주신 마법사 랜덤 속성 뽑기
-                const skills = ['파이어볼', '워터볼', '록블렛', '윈드 에로우'];
-                skill = skills[Math.floor(Math.random() * skills.length)];
-                user_at += 100;
-                logMessage = `마법사 전직! [${skill}] 스킬을 습득했습니다.`;
-            } else if (jobChoice === '궁수') {
-                user_job = '궁수';
-                skill = '레인 에로우';
-                user_at += 100;
-                user_hp += 50;
-                max_hp += 50;
-                logMessage = "궁수로 전직하였습니다!";
-            } else if (jobChoice === '시민') {
-                logMessage = "당신은 평범한 시민입니다... GAME OVER";
-                document.getElementById("controls").innerHTML = "";
-                return;
+        // 4. 키보드 이동 이벤트
+        window.addEventListener("keydown", (e) => {
+            if (gameState !== 'EXPLORE') return;
+
+            let nextX = playerTileX;
+            let nextY = playerTileY;
+
+            if (e.key === "ArrowUp") nextY--;
+            if (e.key === "ArrowDown") nextY++;
+            if (e.key === "ArrowLeft") nextX--;
+            if (e.key === "ArrowRight") nextX++;
+
+            // 통과 불가능한 벽(1: 나무) 체크
+            if (tileMap[nextY] && tileMap[nextY][nextX] !== 1) {
+                playerTileX = nextX;
+                playerTileY = nextY;
+                checkTileEvent(tileMap[nextY][nextX]);
             }
-            showMainUI();
+        });
+
+        // 타일 감지 이벤트 (파이썬 맵 탐험 로직)
+        function checkTileEvent(tileType) {
+            if (tileType === 2) logMsg = "마을에 들어왔습니다.";
+            if (tileType === 3) {
+                logMsg = "숲속 탐험 중... 몬스터를 마주쳤습니다!";
+                // 확률 추첨 (파이썬 weights 반영)
+                const mList = ['슬라임', '고블린', '오크', '자이언트 스파이더', '그라운드 드래곤'];
+                const selected = mList[Math.floor(Math.random() * mList.length)];
+                startBattle(selected);
+            }
+            if (tileType === 4) {
+                logMsg = "길드에 방문했습니다. 퀘스트를 선택하세요.";
+                showQuestUI();
+            }
+            if (tileType === 5) logMsg = "상점 상주: 천천히 고르시지요 (개발 중)";
         }
 
-        // ==========================================
-        // 5. 작성해주신 길드 퀘스트 & 전투 로직
-        // ==========================================
-        function startQuest(monsterName) {
-            const data = monsterData[monsterName];
-            currentMonster = {
-                name: monsterName,
-                at: data.at,
-                hp: data.hp,
-                maxHp: data.hp,
-                rewardAt: data.rewardAt,
-                rewardHp: data.rewardHp,
-                color: data.color
-            };
+        // 5. 파이썬 직업 전직 & 전투 로직
+        function selectJob(job) {
+            user_job = job;
+            if (job === '검사') { skill = '검기'; max_hp += 100; user_hp += 100; user_at += 100; }
+            if (job === '마법사') { skill = '파이어볼'; max_hp += 50; user_hp += 50; user_at += 100; }
+            if (job === '궁수') { skill = '레인 에로우'; max_hp += 50; user_hp += 50; user_at += 100; }
+            gameState = 'EXPLORE';
+            logMsg = `${user_job}(으)로 전직완료! 방향키로 이동하세요.`;
+            document.getElementById("ui").innerHTML = "";
+        }
+
+        function startBattle(monsterName) {
             gameState = 'BATTLE';
-            logMessage = `${monsterName} 등장! (체력: ${data.hp} / 공격력: ${data.at})`;
-            showBattleUI();
-        }
-
-        // 공격하기 버튼 누르면 둘이 부딪히며 움직이는 애니메이션!
-        function attack() {
-            if (!currentMonster || user_hp <= 0) return;
-
-            // 1. 유저 공격 애니메이션 (전진)
-            playerMove = 30;
-
-            // 2. 유저의 공격 적용
-            currentMonster.hp -= user_at;
-            logMessage = `유저의 공격! ${currentMonster.name}에게 ${user_at} 대미지!`;
-
-            // 몬스터 처치 확인
-            if (currentMonster.hp <= 0) {
-                currentMonster.hp = 0;
-                logMessage = `${currentMonster.name}을 토벌하였습니다! 보상을 선택하세요.`;
-                showRewardUI();
-                return;
-            }
-
-            // 3. 몬스터 반격 애니메이션 (전진)
-            setTimeout(() => {
-                monsterMove = -30;
-                user_hp -= currentMonster.at;
-                logMessage += ` | ${currentMonster.name}의 공격! 남은 체력: ${user_hp}`;
-
-                if (user_hp <= 0) {
-                    user_hp = 0;
-                    logMessage = "당신은 죽었습니다... GAME OVER";
-                    document.getElementById("controls").innerHTML = `<button onclick="location.reload()">다시 시작</button>`;
-                }
-            }, 300);
-        }
-
-        function runAway() {
-            logMessage = "싸움포기... 도망쳤습니다.";
-            currentMonster = null;
-            showMainUI();
-        }
-
-        function getReward(type) {
-            if (type === 'ATK') {
-                user_at += currentMonster.rewardAt;
-                logMessage = `공격력 +${currentMonster.rewardAt} 상승!`;
-            } else {
-                max_hp += currentMonster.rewardHp;
-                user_hp = max_hp;
-                logMessage = `체력 +${currentMonster.rewardHp} 상승 및 회복!`;
-            }
-            currentMonster = null;
-            showMainUI();
-        }
-
-        // ==========================================
-        // 6. 버튼 화면 제어 (UI)
-        // ==========================================
-        function showJobUI() {
-            const controls = document.getElementById("controls");
-            controls.innerHTML = `
-                <button onclick="selectJob('검사')">검사</button>
-                <button onclick="selectJob('마법사')">마법사</button>
-                <button onclick="selectJob('궁수')">궁수</button>
-                <button onclick="selectJob('시민')">전직안함(e)</button>
-            `;
-        }
-
-        function showMainUI() {
-            const controls = document.getElementById("controls");
-            controls.innerHTML = `
-                <button onclick="showQuestUI()">길드가기 (퀘스트)</button>
-                <button onclick="logMessage = '상점은 개발 중입니다!'">상점가기</button>
-                <button onclick="logMessage = \`[스탯] 직업:\${user_job} | 체력:\${user_hp} | 공격력:\${user_at}\` ">스테이터스</button>
-            `;
-        }
-
-        function showQuestUI() {
-            const controls = document.getElementById("controls");
-            controls.innerHTML = `
-                <button onclick="startQuest('슬라임')">1. 슬라임 (추천 G)</button>
-                <button onclick="startQuest('고블린')">2. 고블린 (추천 E)</button>
-                <button onclick="startQuest('오크')">3. 오크 (추천 E)</button>
-                <button onclick="startQuest('자이언트 스파이더')">4. 자이언트 스파이더 (추천 C)</button>
-                <button onclick="startQuest('그라운드 드래곤')">5. 그라운드 드래곤 (추천 A)</button>
-                <button onclick="showMainUI()">마을로 나가기</button>
-            `;
-        }
-
-        function showBattleUI() {
-            const controls = document.getElementById("controls");
-            controls.innerHTML = `
+            const data = monsterData[monsterName];
+            currentMonster = { name: monsterName, ...data };
+            logMsg = `${monsterName} 등장! (HP: ${data.hp} / ATK: ${data.at})`;
+            
+            document.getElementById("ui").innerHTML = `
                 <button onclick="attack()">1. 공격</button>
                 <button onclick="runAway()">2. 도망</button>
             `;
         }
 
+        function attack() {
+            currentMonster.hp -= user_at;
+            logMsg = `유저 공격! ${currentMonster.name} HP: ${Math.max(0, currentMonster.hp)}`;
+
+            if (currentMonster.hp <= 0) {
+                logMsg = `${currentMonster.name} 토벌 완료! 보상을 선택하세요.`;
+                showRewardUI();
+                return;
+            }
+
+            setTimeout(() => {
+                user_hp -= currentMonster.at;
+                if (user_hp <= 0) {
+                    user_hp = 0;
+                    logMsg = "당신은 죽었습니다... GAME OVER";
+                    document.getElementById("ui").innerHTML = `<button onclick="location.reload()">다시 시작</button>`;
+                }
+            }, 200);
+        }
+
+        function runAway() {
+            logMsg = "싸움포기... 도망쳤습니다.";
+            gameState = 'EXPLORE';
+            document.getElementById("ui").innerHTML = "";
+        }
+
+        function getReward(type) {
+            if (type === 'ATK') user_at += currentMonster.rewardAt;
+            else { max_hp += currentMonster.rewardHp; user_hp = max_hp; }
+            gameState = 'EXPLORE';
+            logMsg = "보상 획득 완료! 탐험을 계속하세요.";
+            document.getElementById("ui").innerHTML = "";
+        }
+
+        function showQuestUI() {
+            document.getElementById("ui").innerHTML = `
+                <button onclick="startBattle('슬라임')">슬라임(G)</button>
+                <button onclick="startBattle('고블린')">고블린(E)</button>
+                <button onclick="startBattle('오크')">오크(E)</button>
+                <button onclick="startBattle('그라운드 드래곤')">드래곤(A)</button>
+            `;
+        }
+
         function showRewardUI() {
-            const controls = document.getElementById("controls");
-            controls.innerHTML = `
+            document.getElementById("ui").innerHTML = `
                 <button onclick="getReward('ATK')">공격력+</button>
                 <button onclick="getReward('HP')">체력+</button>
             `;
         }
 
-        // 게임 시작!
-        showJobUI();
+        // 초기 직업 선택 UI
+        document.getElementById("ui").innerHTML = `
+            <button onclick="selectJob('검사')">검사</button>
+            <button onclick="selectJob('마법사')">마법사</button>
+            <button onclick="selectJob('궁수')">궁수</button>
+        `;
+
         draw();
     </script>
 </body>
