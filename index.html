@@ -2,15 +2,23 @@
 <html lang = 'ko'>
 <head>
     <title>이것은 타이틀을 곁들인 타이틀인!</title>
+</head>
+    
+<body>
+    <canvas id = 'tan' width = '500' height = '500'></canvas>
+    
     <script>
-        if (273 < 100) {
-            alert('273 < 100 => true')
+        const a = prompt('동의 하십니까?(예/아니오)')
+
+        if (a === '예') {
+            const b = confirm('정말 동의하십니까?')
         }
 
-        alert('종료')
+            if (b === true) {
+                const ctx = tan.getContext('2d');
+                ctx.textStyle = ('100px Arial');
+                ctx.fillText('메롱' 250 , 250);
+            }
     </script>
-</head>
-<body>
-
 </body>
 </html>
