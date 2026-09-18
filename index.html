@@ -31,10 +31,8 @@
             const y = event.offsetY;
 
             if (x >= itX && x <= itX + itWidth &&
-                y >= itY && y <= itY + itHeight);
-        };
-        
-        const a = prompt('동의 하십니까?(예/아니오)')
+                y >= itY && y <= itY + itHeight) {
+                const a = prompt('동의 하십니까?(예/아니오)')
 
         if (a === '예') {
             const b = confirm('정말 동의하십니까?')
@@ -49,6 +47,8 @@
                 ctx.fillStyle = 'skyblue';
                 
                 ctx.fillText('동의하시는군요.' , tab.width / 2 , tab.height / 2);
+            }
+        };
             }
         }
     </script>
