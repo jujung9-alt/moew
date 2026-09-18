@@ -1,16 +1,17 @@
-<!DOCTYPE hmtl>
+<!DOCTYPE html>
 <html lang = 'ko'>
 <head>
     <title>이것은 타이틀을 곁들인 타이틀인!</title>
-    <button id = 'kd'>게임시작</button>
 </head>
     
 <body>
     <canvas id = 'tan'></canvas>
+    <button id = 'kd'>게임시작</button>
     
     <script>
-        
         const tab = document.getElementById('tan');
+        const ctx = tab.getContext('2d');
+        
         tab.width = window.innerWidth;
         tab.height = window.innerHeight
 
@@ -20,7 +21,7 @@
         const itHeight = 50;
 
         ctx.fillStyle = 'Black';
-        ctx.fillRect(itX,itY,itWidth,itHeight);
+        ctx.fillRect(itX , itY , itWidth , itHeight);
 
         ctx.fillStyle = 'white';
         ctx.font = '20px Arial';
@@ -33,24 +34,21 @@
             if (x >= itX && x <= itX + itWidth &&
                 y >= itY && y <= itY + itHeight) {
                 const a = prompt('동의 하십니까?(예/아니오)')
-
-        if (a === '예') {
-            const b = confirm('정말 동의하십니까?')
-
-            if (b === true) {
-                const ctx = tan.getContext('2d');
-
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-
-                ctx.font = ('500px Arial');
-                ctx.fillStyle = 'skyblue';
-                
-                ctx.fillText('동의하시는군요.' , tab.width / 2 , tab.height / 2);
+                    
+                if (a === '예') {
+                    const b = confirm('정말 동의하십니까?')
+                        if (b === true) {
+                            
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            
+                            ctx.font = ('200px Arial');
+                            ctx.fillStyle = 'skyblue';
+                            ctx.fillText('동의하시는군요.' , tab.width / 2 , tab.height / 2);
+                        }
+                }
             }
         };
-            }
-        }
     </script>
 </body>
 </html>
