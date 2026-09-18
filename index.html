@@ -2,15 +2,37 @@
 <html lang = 'ko'>
 <head>
     <title>이것은 타이틀을 곁들인 타이틀인!</title>
+    <button id = 'kd'>게임시작</button>
 </head>
     
 <body>
     <canvas id = 'tan'></canvas>
     
     <script>
+        
         const tab = document.getElementById('tan');
         tab.width = window.innerWidth;
         tab.height = window.innerHeight
+
+        const itX = 100;
+        const itY = 100;
+        const itWidth = 120;
+        const itHeight = 50;
+
+        ctx.fillStyle = 'Black';
+        ctx.fillRect(itX,itY,itWidth,itHeight);
+
+        ctx.fillStyle = 'white';
+        ctx.font = '20px Arial';
+        ctx.fillText('버튼' , itX + 40 , itY + 30);
+
+        tab.onclick = function(event) {
+            const x = event.offsetX;
+            const y = event.offsetY;
+
+            if (x >= itX && x <= itX + itWidth &&
+                y >= itY && y <= itY + itHeight);
+        };
         
         const a = prompt('동의 하십니까?(예/아니오)')
 
